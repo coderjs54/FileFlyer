@@ -271,6 +271,7 @@ jobs:
           APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM || '0000000000' }}
         run: npx tauri ios init --ci --skip-targets-install
 
+      # Tauri iOS CLI 使用短名称：aarch64（真机）、aarch64-sim（Apple Silicon 模拟器）、x86_64（Intel 模拟器）
       - name: Build signed IPA
         if: steps.ios-signing.outputs.enabled == 'true'
         env:
@@ -278,15 +279,15 @@ jobs:
           IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
-        run: npx tauri ios build --ci --target aarch64-apple-ios --export-method "$IOS_EXPORT_METHOD"
+        run: npx tauri ios build --ci --target aarch64 --export-method "$IOS_EXPORT_METHOD"
 
       - name: Build unsigned simulator app
         if: steps.ios-signing.outputs.enabled != 'true'
         run: |
           if [ "$(uname -m)" = "arm64" ]; then
-            TARGET=aarch64-apple-ios-sim
+            TARGET=aarch64-sim
           else
-            TARGET=x86_64-apple-ios
+            TARGET=x86_64
           fi
           npx tauri ios build --ci --no-sign --target "$TARGET"
 
