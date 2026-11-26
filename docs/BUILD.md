@@ -61,6 +61,15 @@ npm run tauri build
 npm run tauri build -- --debug --no-bundle
 ```
 
+生成免安装便携版（release 模式，不构建 MSI/NSIS）：
+
+```powershell
+npm run desktop:build:portable
+```
+
+产物就是 `src-tauri/target/release/fileflyer.exe`，重命名后即可直接分发。
+CI 会把它复制为 `FileFlyer-portable.exe` 并放入 Release。
+
 首次运行会触发 Windows 防火墙提示。需要允许“专用网络”，否则 UDP 发现和 TCP 传输会被拦截。
 
 ## 3. macOS 桌面端

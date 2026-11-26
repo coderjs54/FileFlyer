@@ -10,7 +10,7 @@
     "tauri": "tauri",
     "desktop:dev": "tauri dev",
     "desktop:build": "tauri build",
-    "desktop:build:portable": "tauri build --no-bundle && powershell -NoProfile -Command \"New-Item -ItemType Directory -Force dist-portable | Out-Null; Copy-Item src-tauri/target/release/fileflyer.exe dist-portable/FileFlyer-portable.exe -Force\"",
+    "desktop:build:portable": "tauri build --no-bundle",
     "android:init": "tauri android init",
     "android:dev": "tauri android dev",
     "android:build": "tauri android build --apk --debug --target x86_64",
