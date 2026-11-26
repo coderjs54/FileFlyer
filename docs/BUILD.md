@@ -369,6 +369,9 @@ iOS 导出方式在手动运行时可选择：
 `IOS_CERTIFICATE`、`IOS_CERTIFICATE_PASSWORD`、`IOS_MOBILE_PROVISION` 环境变量完成手动签名。
 详细说明参考：https://v2.tauri.app/distribute/sign/ios/
 
+未配置上述 Secrets 时，工作流会使用占位 Team ID 完成 iOS 工程初始化，只构建无签名的模拟器 App；
+该产物用于验证 iOS 编译链路，不能安装到真机，也不会放入 Release。
+
 ### 8.3 桌面端签名
 
 当前工作流默认不配置 Windows 代码签名，安装包可能触发 SmartScreen 提示。macOS 产物同样默认未签名；

@@ -147,18 +147,25 @@ jobs:
         with:
           workspaces: "src-tauri -> target"
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android SDK packages
         run: |
           SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
           if [ -z "$SDK_ROOT" ]; then
             SDK_ROOT="/usr/local/lib/android/sdk"
           fi
-          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$SDKMANAGER" ]; then
-            SDKMANAGER="sdkmanager"
+          SDKMANAGER=""
+          for candidate in "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "$SDK_ROOT"/cmdline-tools/*/bin/sdkmanager; do
+            if [ -x "$candidate" ]; then
+              SDKMANAGER="$candidate"
+              break
+            fi
+          done
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(command -v sdkmanager || true)"
+          fi
+          if [ -z "$SDKMANAGER" ]; then
+            echo "找不到 sdkmanager"
+            exit 1
           fi
           yes | "$SDKMANAGER" --licenses > /dev/null || true
           "$SDKMANAGER" --install \
@@ -247,11 +254,12 @@ jobs:
       - name: Detect iOS signing secrets
         id: ios-signing
         env:
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
           IOS_CERTIFICATE: ${{ secrets.IOS_CERTIFICATE }}
           IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
           IOS_MOBILE_PROVISION: ${{ secrets.IOS_MOBILE_PROVISION }}
         run: |
-          if [ -n "$IOS_CERTIFICATE" ] && [ -n "$IOS_CERTIFICATE_PASSWORD" ] && [ -n "$IOS_MOBILE_PROVISION" ]; then
+          if [ -n "$APPLE_DEVELOPMENT_TEAM" ] && [ -n "$IOS_CERTIFICATE" ] && [ -n "$IOS_CERTIFICATE_PASSWORD" ] && [ -n "$IOS_MOBILE_PROVISION" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
@@ -259,7 +267,8 @@ jobs:
 
       - name: Initialize iOS project
         env:
-          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
+          # 未配置签名时使用占位 Team ID，仅用于无签名的模拟器构建
+          APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM || '0000000000' }}
         run: npx tauri ios init --ci --skip-targets-install
 
       - name: Build signed IPA
