@@ -1,5 +1,6 @@
 use tauri::AppHandle;
 use tauri_plugin_fs::{FilePath, FsExt, OpenOptions};
+use percent_encoding::percent_decode_str;
 
 /// 待发送文件的来源信息
 pub struct SourceFile {
@@ -92,15 +93,20 @@ fn display_name(file_path: &FilePath, raw: &str) -> String {
     }
 
     // 取不到原始文件名时，退回 URI 末段，保证界面上仍可区分
-    let fallback = raw
-        .rsplit('/')
+    fallback_display_name(raw)
+}
+
+/// 从 URI 末段提取展示名。
+/// Android content:// 与 iOS file:// 的路径可能包含 %E6%8A%A5 这类百分号编码，
+/// 这里先解码再取最后一段，避免中文文件名显示成 URLEncode 形式。
+fn fallback_display_name(raw: &str) -> String {
+    let raw_path = raw.split('?').next().unwrap_or(raw);
+    let decoded = percent_decode_str(raw_path).decode_utf8_lossy();
+    let fallback = decoded
+        .rsplit(['/', '\\'])
         .find(|part| !part.is_empty())
         .unwrap_or("文件");
-    fallback
-        .split('?')
-        .next()
-        .unwrap_or(fallback)
-        .replace(':', "_")
+    fallback.replace(':', "_")
 }
 
 /// Android 上通过 ContentResolver 查询 content:// URI 的展示名称
@@ -202,5 +208,33 @@ mod android_uri {
 
         let _ = env.call_method(&cursor, "close", "()V", &[]);
         name
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fallback_display_name;
+
+    #[test]
+    fn decodes_percent_encoded_content_uri_name() {
+        assert_eq!(
+            fallback_display_name(
+                "content://com.android.providers.downloads.documents/document/primary%3ADownload%2F%E6%8A%A5%E5%91%8A.pdf"
+            ),
+            "报告.pdf"
+        );
+    }
+
+    #[test]
+    fn decodes_percent_encoded_file_uri_name() {
+        assert_eq!(
+            fallback_display_name("file:///tmp/%E6%B5%8B%E8%AF%95.txt"),
+            "测试.txt"
+        );
+    }
+
+    #[test]
+    fn keeps_plain_name_unchanged() {
+        assert_eq!(fallback_display_name("报告.pdf"), "报告.pdf");
     }
 }
