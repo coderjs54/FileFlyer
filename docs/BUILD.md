@@ -211,7 +211,10 @@ adb install -r src-tauri/gen/android/app/build/outputs/apk/universal/release/app
 
 ### 5.4 权限与保存位置
 
-- 生成的 `AndroidManifest.xml` 已包含 `android.permission.INTERNET`，UDP 广播与 TCP 连接无需额外权限。
+- `AndroidManifest.xml` 包含 `INTERNET`、`ACCESS_NETWORK_STATE`、`ACCESS_WIFI_STATE`、
+  `CHANGE_WIFI_MULTICAST_STATE`，以及 Android 17 局域网访问所需的 `ACCESS_LOCAL_NETWORK`。
+- `MainActivity` 会在 Android 17 及以上请求本地网络运行时权限，并持有 Wi-Fi 组播锁以稳定接收 UDP 广播。
+  首次启动请允许“附近设备 / 本地网络”权限；拒绝后需要在系统设置中重新授予，否则无法发现设备或传输文件。
 - 接收文件默认保存在应用专属外部目录（`Android/data/<包名>/files/Documents/FileFlyer`），设置页会显示实际路径。
 - 由于 Android 分区存储限制，当前版本不会直接写入公共“下载”目录。后续如需导出，可通过系统的文件管理或分享功能扩展。
 - 部分厂商的省电策略会限制后台网络；传输时请保持应用在前台。
@@ -230,6 +233,7 @@ keytool -genkeypair -v -keystore fileflyer-release.keystore \
 - https://v2.tauri.app/distribute/sign/android/
 
 修改 `tauri.conf.json` 中的 `identifier` 后，建议删除 `src-tauri/gen/android` 并重新执行 `npm run tauri android init`，避免包名与旧工程不一致。
+注意：重新生成 Android 工程会丢失 `AndroidManifest.xml` 中的本地网络权限，以及 `MainActivity` 中的权限请求和组播锁代码，需要重新补齐。
 
 ## 6. iOS
 
@@ -260,14 +264,16 @@ npm run tauri ios build
 
 ### 6.3 局域网权限与文件访问
 
-iOS 14 起，应用访问局域网会触发系统授权。需要在生成的 Xcode 工程 `Info.plist` 中加入：
+iOS 14 起，应用访问局域网会触发系统授权。项目已通过 `src-tauri/Info.ios.plist` 提供
+`NSLocalNetworkUsageDescription`，并在 `tauri.conf.json` 的 `bundle.iOS.infoPlist` 中合并，
+无需手动修改生成的 Xcode 工程。
 
-```xml
-<key>NSLocalNetworkUsageDescription</key>
-<string>FileFlyer 需要访问局域网以发现附近设备并传输文件。</string>
-```
+注意：iOS 还会限制 UDP 广播/组播流量。除本地网络权限外，自动发现还需要 Apple 批准的
+`com.apple.developer.networking.multicast` entitlement。未获批准时，允许本地网络权限后仍可通过
+应用内的手动 IP 功能进行 TCP 传输。申请地址：
+https://developer.apple.com/contact/request/networking-multicast
 
-如需让接收目录出现在系统“文件”App 中，再加入：
+如需让接收目录出现在系统“文件”App 中，可在 `Info.ios.plist` 中加入：
 
 ```xml
 <key>UIFileSharingEnabled</key>
@@ -314,7 +320,7 @@ git push origin v0.1.0
 
 | 平台 | Runner | 产物 |
 | --- | --- | --- |
-| Windows | `windows-latest` | `.msi`、NSIS `.exe` |
+| Windows | `windows-latest` | `.msi`、NSIS `.exe`、`FileFlyer-portable.exe`（免安装） |
 | macOS | `macos-latest` | 通用架构 `.dmg` |
 | Linux | `ubuntu-22.04` | `.deb`、`.AppImage` |
 | Android | `ubuntu-latest` | 签名 `.apk` / `.aab`；未配置签名时为调试 `.apk` |
@@ -385,6 +391,24 @@ iOS 导出方式在手动运行时可选择：
 - `tauri.conf.json` 中的版本号应与标签保持一致，例如标签 `v0.1.0` 对应版本 `0.1.0`。
 
 ## 9. 常见问题
+
+### Windows 打包报 “failed to bundle project: timeout: global”
+
+Rust 编译和应用本体已经成功，失败发生在 Tauri 下载 WiX 工具（约 39 MB）时，属于网络超时。
+
+处理方式：
+
+1. 只生成 NSIS 安装包：
+
+```bash
+npm run desktop:build -- --bundles nsis
+```
+
+2. 或手动补齐 WiX 缓存，使 MSI 打包不再联网下载：
+   - 下载 https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip
+   - 确认 SHA256 为 `6ac824e1642d6f7277d0ed7ea09411a508f6116ba6fae0aa5f2c7daa2ff43d31`
+   - 解压到 `%LOCALAPPDATA%\tauri\WixTools314`
+   - 重新运行 `npm run desktop:build`
 
 ### Gradle 下载超时
 

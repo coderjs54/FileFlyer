@@ -79,8 +79,10 @@ npm run tauri build
 | 设备发现 | UDP 45731（有限广播 + 各网卡定向广播） |
 | 文件传输 | TCP 随机端口，通过 UDP 广播告知其他设备 |
 
-- Windows 首次运行会弹出防火墙提示，请允许“专用网络”访问，否则其他设备无法发现本机。
-- 如果使用公共网络或访客 Wi-Fi，路由器可能开启 AP 隔离，设备之间无法直连；请改用普通 Wi-Fi 或手机热点。
+- Windows 首次运行会弹出防火墙提示，请允许“专用网络”访问，否则其他设备无法发现本机。使用便携版 exe 时，Windows 会把新路径视为新程序，需要再次允许。
+- Android 17（targetSdk 37）首次启动会请求“附近设备 / 本地网络”权限，请选择允许；拒绝后系统会拦截局域网 UDP/TCP，导致无法发现或传输。
+- iOS 首次访问局域网时也会请求本地网络权限；UDP 广播还要求 Apple 批准的 Multicast Networking entitlement，未获批时自动发现可能不可用，可在允许权限后使用手动 IP 传输。
+- 如果使用公共网络或访客 Wi-Fi，路由器可能开启 AP 隔离，设备之间无法直连；请改用普通 Wi-Fi 或手机热点，也可以使用应用内的手动 IP 连接。
 - 目前仅支持 IPv4 局域网与手动 IPv4 地址连接。
 - 同一台电脑同时只能运行一个 FileFlyer 实例，因为发现端口固定。
 
@@ -141,6 +143,7 @@ docs/BUILD.md            各平台编译构建说明
 npm run build          # 前端类型检查与生产构建
 npm run tauri dev      # 启动桌面开发环境
 npm run tauri build    # 构建桌面安装包
+npm run desktop:build:portable   # 构建免安装便携版（单个 exe）
 cargo test --manifest-path src-tauri/Cargo.toml   # Rust 单元测试
 ```
 
